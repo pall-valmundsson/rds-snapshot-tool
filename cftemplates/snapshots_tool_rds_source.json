@@ -51,6 +51,11 @@
 			"Default": "NO",
 			"Description": "Set to the region where your RDS instances run, only if such region does not support Step Functions. Leave as NO otherwise"
 		},
+		"KmsReEncryptionKey": {
+			"Type": "String",
+			"Default": "None",
+			"Description": "Set to the ARN for the KMS key in the SOURCE region to re-encrypt encrypted snapshots, or encrypt unencrypted snapshots. Leave None if you are not using encryption"
+		},
 		"DeleteOldSnapshots": {
 			"Type": "String",
 			"Default": "TRUE",
@@ -84,6 +89,11 @@
 			"Fn::Equals": [{
 				"Ref": "CodeBucket"
 			}, "DEFAULT_BUCKET"]
+		},
+		"ReEncryption": {
+			"Fn::Not": [{
+				"Ref": "KmsReEncryptionKey"
+			}, "None"]
 		}
 	},
 	"Mappings": {
@@ -304,6 +314,58 @@
 							}]
 						}
 
+					},
+					{
+						"PolicyName": "inline_policy_snapshot_rds_kms_access",
+						"PolicyDocument": {
+							"Version": "2012-10-17",
+							"Statement": [{
+									"Sid": "AllowUseOfTheKey",
+									"Effect": "Allow",
+									"Action": [
+										"kms:Encrypt",
+										"kms:Decrypt",
+										"kms:ReEncrypt*",
+										"kms:GenerateDataKey*",
+										"kms:DescribeKey"
+									],
+									"Resource": {
+										"Fn::If": ["ReEncryption",
+											[
+												{"Fn::Sub": "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/rds"},
+												{"Ref": "KmsReEncryptionKey"}
+											],
+											[
+											]
+										]
+									}
+								},
+								{
+									"Sid": "AllowAttachmentOfPersistentResources",
+									"Effect": "Allow",
+									"Action": [
+										"kms:CreateGrant",
+										"kms:ListGrants",
+										"kms:RevokeGrant"
+									],
+									"Resource": {
+										"Fn::If": ["ReEncryption",
+											[
+												{"Fn::Sub": "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/rds"},
+												{"Ref": "KmsReEncryptionKey"}
+											],
+											[
+											]
+										]
+									},
+									"Condition": {
+										"Bool": {
+											"kms:GrantIsForAWSResource": true
+										}
+									}
+								}
+							]
+						}
 					}
 				]
 			}
@@ -338,6 +400,9 @@
 						},
 						"REGION_OVERRIDE": {
 							"Ref": "SourceRegionOverride"
+						},
+						"KMS_REENCRYPTION_KEY": {
+							"Ref": "KmsReEncryptionKey"
 						},
 						"TAGGEDINSTANCE": {
 							"Ref": "TaggedInstance"

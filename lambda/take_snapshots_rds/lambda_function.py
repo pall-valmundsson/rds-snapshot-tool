@@ -26,6 +26,7 @@ from snapshots_tool_utils import *
 LOGLEVEL = os.getenv('LOG_LEVEL').strip()
 BACKUP_INTERVAL = int(os.getenv('INTERVAL', '24'))
 PATTERN = os.getenv('PATTERN', 'ALL_INSTANCES')
+KMS_REENCRYPTION_KEY = os.getenv('KMS_REENCRYPTION_KEY', 'None')
 TAGGEDINSTANCE = os.getenv('TAGGEDINSTANCE', 'FALSE')
 
 if os.getenv('REGION_OVERRIDE', 'NO') != 'NO':
@@ -70,12 +71,33 @@ def lambda_handler(event, context):
                 db_instance['DBInstanceIdentifier'], timestamp_format)
 
             try:
-                response = client.create_db_snapshot(
-                    DBSnapshotIdentifier=snapshot_identifier,
-                    DBInstanceIdentifier=db_instance['DBInstanceIdentifier'],
-                    Tags=[{'Key': 'CreatedBy', 'Value': 'Snapshot Tool for RDS'}, {
-                        'Key': 'CreatedOn', 'Value': timestamp_format}, {'Key': 'shareAndCopy', 'Value': 'YES'}]
-                )
+                if KMS_REENCRYPTION_KEY == 'None':
+                    response = client.create_db_snapshot(
+                        DBSnapshotIdentifier=snapshot_identifier,
+                        DBInstanceIdentifier=db_instance['DBInstanceIdentifier'],
+                        Tags=[{'Key': 'CreatedBy', 'Value': 'Snapshot Tool for RDS'}, {
+                            'Key': 'CreatedOn', 'Value': timestamp_format}, {'Key': 'shareAndCopy', 'Value': 'YES'}]
+                    )
+                else:
+                    temporary_snapshot_identifier = 'temp-%s' % snapshot_identifier
+
+                    response = client.create_db_snapshot(
+                        DBSnapshotIdentifier=temporary_snapshot_identifier,
+                        DBInstanceIdentifier=db_instance['DBInstanceIdentifier'],
+                        Tags=[{'Key': 'CreatedBy', 'Value': 'Snapshot Tool for RDS'}, {
+                            'Key': 'CreatedOn', 'Value': timestamp_format}, {'Key': 'temporarySnapshot', 'Value': 'YES'}]
+                    )
+                    encrypt_response = client.copy_db_snapshot(
+                        SourceDBSnapshotIdentifier=temporary_snapshot_identifier,
+                        TargetDBSnapshotIdentifier=snapshot_identifier,
+                        KmsKeyId=KMS_REENCRYPTION_KEY,
+                        Tags=[{'Key': 'CreatedBy', 'Value': 'Snapshot Tool for RDS'}, {
+                            'Key': 'CreatedOn', 'Value': timestamp_format}, {'Key': 'shareAndCopy', 'Value': 'YES'}]
+                    )
+                    delete_response = client.delete_db_snapshot(
+                        DBSnapshotIdentifier=temporary_snapshot_identifier
+                    )
+
             except Exception as e:
                 pending_backups += 1
                 logger.info('Could not create snapshot %s (%s)' % (snapshot_identifier, e))
