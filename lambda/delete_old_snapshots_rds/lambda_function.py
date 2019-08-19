@@ -64,8 +64,21 @@ def lambda_handler(event, context):
                     pending_delete += 1
                     logger.info('Could not delete %s (%s)' % (snapshot, e))
 
-            else: 
-                logger.info('Not deleting %s. Created only %s' % (snapshot, days_difference))
+            else:
+                if is_intermediate_snapshot_identifier(snapshot):
+                    # We have an intermediate re-encryption snapshot
+                    reencrypted_snapshot_identifier = get_final_identifier_from_intermediate_snapshot(snapshot)
+                    if reencrypted_snapshot_identifier in filtered_list:
+                        reencrypted_snapshot_object = filtered_list[reencrypted_snapshot_identifier]
+                        if reencrypted_snapshot_object['Status'].lower() == 'available':
+                            # This intermediate snapshot has been re-encrypted and can be deleted
+                            logger.info('Deleting re-encryption intermediate snapshot %s' % snapshot)
+                            client.delete_db_snapshot(
+                                DBSnapshotIdentifier=snapshot)
+                    else:
+                        logger.info('Not deleting %s. Intermediate re-encryption snapshot that has not been re-encrypted.' % snapshot)
+                else:
+                    logger.info('Not deleting %s. Created only %s' % (snapshot, days_difference))
 
 
     if pending_delete > 0:

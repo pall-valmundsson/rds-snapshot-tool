@@ -79,23 +79,17 @@ def lambda_handler(event, context):
                             'Key': 'CreatedOn', 'Value': timestamp_format}, {'Key': 'shareAndCopy', 'Value': 'YES'}]
                     )
                 else:
-                    temporary_snapshot_identifier = 'temp-%s' % snapshot_identifier
+                    intermediate_snapshot_identifier = get_intermediate_snapshot_identifier(snapshot_identifier)
 
+                    logger.info('Creating intermediate snapshot %s for %s...' % (
+                        temporary_snapshot_identifier,
+                        db_instance['DBInstanceIdentifier'])
+                    )
                     response = client.create_db_snapshot(
-                        DBSnapshotIdentifier=temporary_snapshot_identifier,
+                        DBSnapshotIdentifier=intermediate_snapshot_identifier,
                         DBInstanceIdentifier=db_instance['DBInstanceIdentifier'],
                         Tags=[{'Key': 'CreatedBy', 'Value': 'Snapshot Tool for RDS'}, {
-                            'Key': 'CreatedOn', 'Value': timestamp_format}, {'Key': 'temporarySnapshot', 'Value': 'YES'}]
-                    )
-                    encrypt_response = client.copy_db_snapshot(
-                        SourceDBSnapshotIdentifier=temporary_snapshot_identifier,
-                        TargetDBSnapshotIdentifier=snapshot_identifier,
-                        KmsKeyId=KMS_REENCRYPTION_KEY,
-                        Tags=[{'Key': 'CreatedBy', 'Value': 'Snapshot Tool for RDS'}, {
-                            'Key': 'CreatedOn', 'Value': timestamp_format}, {'Key': 'shareAndCopy', 'Value': 'YES'}]
-                    )
-                    delete_response = client.delete_db_snapshot(
-                        DBSnapshotIdentifier=temporary_snapshot_identifier
+                            'Key': 'CreatedOn', 'Value': timestamp_format}, {'Key': 'intermediateSnapshot', 'Value': 'YES'}]
                     )
 
             except Exception as e:

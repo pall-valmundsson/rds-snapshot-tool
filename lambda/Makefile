@@ -35,7 +35,8 @@ all:	._copy_snapshots_dest_rds \
 	._delete_old_snapshots_no_x_account_rds \
 	._delete_old_snapshots_rds \
 	._share_snapshots_rds \
-	._take_snapshots_rds
+	._take_snapshots_rds \
+	._reencrypt_snapshots_rds
 
 clean:
 	rm -f ._*

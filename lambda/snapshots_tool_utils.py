@@ -73,6 +73,41 @@ def search_tag_created(response):
 
 
 
+def search_tag_intermediate(response):
+# Takes a describe_db_snapshots response and searches for our shareAndCopy tag
+    try:
+        for tag in response['TagList']:
+            if tag['Key'] == 'intermediateSnapshot' and tag['Value'] == 'YES':
+                for tag2 in response['TagList']:
+                    if tag2['Key'] == 'CreatedBy' and tag2['Value'] == 'Snapshot Tool for RDS':
+                        return True
+
+    except Exception:
+        return False
+
+    return False
+
+
+
+def get_intermediate_snapshot_identifier(snapshot_identifier):
+    intermediate_snapshot_identifier = 'temp-%s' % snapshot_identifier
+    return intermediate_snapshot_identifier
+
+
+
+def is_intermediate_snapshot_identifier(intermediate_snapshot_identifier):
+    return intermediate_snapshot_identifier[0:4] == 'temp'
+
+
+
+def get_final_identifier_from_intermediate_snapshot(intermediate_snapshot_identifier):
+    if intermediate_snapshot_identifier[0:4] == 'temp':
+        return intermediate_snapshot_identifier[5:]
+    else:
+        raise Exception('Cannot get identifier from non-intermediate snapshot')
+
+
+
 def search_tag_shared(response):
 # Takes a describe_db_snapshots response and searches for our shareAndCopy tag
     try:
