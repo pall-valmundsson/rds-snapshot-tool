@@ -80,13 +80,14 @@ def lambda_handler(event, context):
                     )
                 else:
                     intermediate_snapshot_identifier = get_intermediate_snapshot_identifier(snapshot_identifier)
+                    snapshot_identifier = intermediate_snapshot_identifier
 
                     logger.info('Creating intermediate snapshot %s for %s...' % (
-                        temporary_snapshot_identifier,
+                        snapshot_identifier,
                         db_instance['DBInstanceIdentifier'])
                     )
                     response = client.create_db_snapshot(
-                        DBSnapshotIdentifier=intermediate_snapshot_identifier,
+                        DBSnapshotIdentifier=snapshot_identifier,
                         DBInstanceIdentifier=db_instance['DBInstanceIdentifier'],
                         Tags=[{'Key': 'CreatedBy', 'Value': 'Snapshot Tool for RDS'}, {
                             'Key': 'CreatedOn', 'Value': timestamp_format}, {'Key': 'intermediateSnapshot', 'Value': 'YES'}]
