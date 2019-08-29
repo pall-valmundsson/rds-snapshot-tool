@@ -51,13 +51,21 @@ def lambda_handler(event, context):
 
         if snapshot_object['Status'].lower() == 'available' and search_tag_intermediate(response_tags):
             try:
+                createdon_value = get_createdon_tag_value(response_tags)
                 encrypted_snapshot_identifier = get_final_identifier_from_intermediate_snapshot(snapshot_identifier)
+
+                logger.info('Encrypting intermediate snapshot %s into %s...' % (
+                        snapshot_identifier,
+                        encrypted_snapshot_identifier,
+                    )
+                )
+
                 encrypt_response = client.copy_db_snapshot(
                     SourceDBSnapshotIdentifier=snapshot_identifier,
                     TargetDBSnapshotIdentifier=encrypted_snapshot_identifier,
                     KmsKeyId=KMS_REENCRYPTION_KEY,
                     Tags=[{'Key': 'CreatedBy', 'Value': 'Snapshot Tool for RDS'}, {
-                        'Key': 'CreatedOn', 'Value': timestamp_format}, {'Key': 'shareAndCopy', 'Value': 'YES'}]
+                        'Key': 'CreatedOn', 'Value': createdon_value}, {'Key': 'shareAndCopy', 'Value': 'YES'}]
                 )
             except Exception as e:
                 logger.error('Exception encrypting %s (%s)' % (snapshot_identifier, e))

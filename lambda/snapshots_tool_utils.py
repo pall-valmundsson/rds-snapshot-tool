@@ -73,6 +73,14 @@ def search_tag_created(response):
 
 
 
+def get_createdon_tag_value(response):
+    for tag in response['TagList']:
+        if tag['Key'] == 'CreatedOn':
+            return tag['Value']
+    raise Exception('Unable to find CreatedOn tag for snapshot')
+
+
+
 def search_tag_intermediate(response):
 # Takes a describe_db_snapshots response and searches for our shareAndCopy tag
     try:

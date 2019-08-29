@@ -51,6 +51,11 @@ def lambda_handler(event, context):
 
         if snapshot_object['Status'].lower() == 'available' and search_tag_shared(response_tags):
             try:
+                logger.info('Sharing snapshot %s to account %s...' % (
+                        snapshot_identifier,
+                        DEST_ACCOUNTID,
+                    )
+                )
                 # Share snapshot with dest_account
                 response_modify = client.modify_db_snapshot_attribute(
                     DBSnapshotIdentifier=snapshot_identifier,
